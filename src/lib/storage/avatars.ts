@@ -1,0 +1,39 @@
+import { mkdir, writeFile, readFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
+import { env } from "@/lib/env";
+
+const AVATAR_SIZE = 256;
+
+function avatarsDir(): string {
+  return path.join(env.DATA_DIR, "avatars");
+}
+
+export async function saveAvatar(
+  playerId: string,
+  input: Buffer,
+): Promise<{ path: string }> {
+  await mkdir(avatarsDir(), { recursive: true });
+  const filename = `${playerId}.webp`;
+  const fullPath = path.join(avatarsDir(), filename);
+
+  const processed = await sharp(input)
+    .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover", position: "centre" })
+    .webp({ quality: 85 })
+    .toBuffer();
+
+  await writeFile(fullPath, processed);
+  return { path: `avatars/${filename}` };
+}
+
+export async function readAvatar(filename: string): Promise<Buffer | null> {
+  // sanitize: disallow path separators
+  if (filename.includes("/") || filename.includes("\\") || filename.includes("..")) {
+    return null;
+  }
+  try {
+    return await readFile(path.join(avatarsDir(), filename));
+  } catch {
+    return null;
+  }
+}
