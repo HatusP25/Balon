@@ -61,8 +61,8 @@ export const config = {
   matcher: [
     /*
      * Match all paths except:
-     * - /login, /p (public viewer routes), /api/avatars (public), /_next, static files
+     * - /login, /logout, /p (public viewer routes), /api/avatars (public), /_next, static files
      */
-    "/((?!login|p/|p$|api/avatars|_next/|favicon.ico).*)",
+    "/((?!login|logout|p/|p$|api/avatars|_next/|favicon.ico).*)",
   ],
 };

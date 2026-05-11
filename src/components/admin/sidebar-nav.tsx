@@ -28,6 +28,14 @@ export function SidebarNav() {
           </Link>
         );
       })}
+      <form action="/logout" method="post" className="mt-6">
+        <button
+          type="submit"
+          className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-pitch-900 hover:bg-pitch-100"
+        >
+          Sign out
+        </button>
+      </form>
     </nav>
   );
 }
