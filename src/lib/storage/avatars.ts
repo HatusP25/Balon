@@ -27,12 +27,14 @@ export async function saveAvatar(
 }
 
 export async function readAvatar(filename: string): Promise<Buffer | null> {
-  // sanitize: disallow path separators
-  if (filename.includes("/") || filename.includes("\\") || filename.includes("..")) {
+  const dir = avatarsDir();
+  const target = path.resolve(dir, filename);
+  // Verify the resolved path is contained within avatarsDir (prevents traversal incl. null bytes)
+  if (!target.startsWith(path.resolve(dir) + path.sep)) {
     return null;
   }
   try {
-    return await readFile(path.join(avatarsDir(), filename));
+    return await readFile(target);
   } catch {
     return null;
   }

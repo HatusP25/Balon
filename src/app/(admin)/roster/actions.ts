@@ -57,9 +57,10 @@ export async function createPlayerAction(_prev: FormState, fd: FormData): Promis
       await updatePlayer(player.id, { avatarPath: path });
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const causeMessage = err instanceof Error && err.cause instanceof Error ? err.cause.message : "";
-    if (message.includes("players_nickname_unique") || causeMessage.includes("players_nickname_unique")) {
+    const code =
+      (err as { code?: string; cause?: { code?: string } }).code ??
+      (err as { cause?: { code?: string } }).cause?.code;
+    if (code === "23505") {
       return { fieldErrors: { nickname: "That nickname is already taken" } };
     }
     return { error: "Could not save player. Try again." };
@@ -102,9 +103,10 @@ export async function updatePlayerAction(
       await updatePlayer(id, { avatarPath: path });
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const causeMessage = err instanceof Error && err.cause instanceof Error ? err.cause.message : "";
-    if (message.includes("players_nickname_unique") || causeMessage.includes("players_nickname_unique")) {
+    const code =
+      (err as { code?: string; cause?: { code?: string } }).code ??
+      (err as { cause?: { code?: string } }).cause?.code;
+    if (code === "23505") {
       return { fieldErrors: { nickname: "That nickname is already taken" } };
     }
     return { error: "Could not update player. Try again." };
