@@ -58,7 +58,8 @@ export async function createPlayerAction(_prev: FormState, fd: FormData): Promis
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("players_nickname_unique")) {
+    const causeMessage = err instanceof Error && err.cause instanceof Error ? err.cause.message : "";
+    if (message.includes("players_nickname_unique") || causeMessage.includes("players_nickname_unique")) {
       return { fieldErrors: { nickname: "That nickname is already taken" } };
     }
     return { error: "Could not save player. Try again." };
@@ -102,7 +103,8 @@ export async function updatePlayerAction(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("players_nickname_unique")) {
+    const causeMessage = err instanceof Error && err.cause instanceof Error ? err.cause.message : "";
+    if (message.includes("players_nickname_unique") || causeMessage.includes("players_nickname_unique")) {
       return { fieldErrors: { nickname: "That nickname is already taken" } };
     }
     return { error: "Could not update player. Try again." };
