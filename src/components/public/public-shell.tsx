@@ -10,8 +10,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="flex gap-4 text-sm font-medium text-pitch-900">
             <Link href="/p">Today</Link>
-            <Link href="/p/stats">Stats</Link>
-            <Link href="/p/players">Players</Link>
+            <Link href="/p/stats">Leaderboard</Link>
           </nav>
         </div>
       </header>
