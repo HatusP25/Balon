@@ -43,3 +43,6 @@ next-env.d.ts
 .superpowers/
 # local dev data (avatars, etc.)
 /data
+
+# Claude Code local config
+.claude/
