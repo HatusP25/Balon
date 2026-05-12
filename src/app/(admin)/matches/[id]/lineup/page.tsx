@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getMatchById } from "@/lib/db/queries/matches";
 import { listSlotsForMatch } from "@/lib/db/queries/lineup-slots";
 import { listAllAssignable } from "@/lib/db/queries/players";
@@ -54,21 +55,31 @@ export default async function LineupPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold text-pitch-900">
             {match.opponentName ? `vs ${match.opponentName}` : "Lineup"}
           </h2>
-          <p className="text-sm text-pitch-700">{formattedDate}</p>
+          <p className="text-sm text-pitch-700">
+            {formattedDate} · {match.status === "played" ? `Final ${match.ourScore}-${match.theirScore}` : "Planned"}
+          </p>
         </div>
-        <a
-          href={publicUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border border-pitch-100 bg-white px-3 py-2 text-sm font-medium text-pitch-900 hover:border-pitch-600"
-        >
-          Public link →
-        </a>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link
+            href={`/matches/${match.id}/result`}
+            className="rounded-lg bg-pitch-600 px-3 py-2 text-sm font-medium text-white hover:bg-pitch-700"
+          >
+            {match.status === "played" ? "Update result" : "Enter result"}
+          </Link>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-pitch-100 bg-white px-3 py-2 text-sm font-medium text-pitch-900 hover:border-pitch-600"
+          >
+            Public link →
+          </a>
+        </div>
       </div>
 
       <LineupBuilder
