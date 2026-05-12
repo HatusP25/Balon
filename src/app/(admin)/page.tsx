@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { listActiveRegulars } from "@/lib/db/queries/players";
+import { getNextPlannedMatch } from "@/lib/db/queries/matches";
 import { Card } from "@/components/ui/card";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboardPage() {
-  const players = await listActiveRegulars();
+  const [players, nextMatch] = await Promise.all([
+    listActiveRegulars(),
+    getNextPlannedMatch(),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -16,14 +23,49 @@ export default async function AdminDashboardPage() {
           <p className="text-xs uppercase tracking-wide text-pitch-700">Roster</p>
           <p className="mt-2 text-3xl font-bold text-pitch-900">{players.length}</p>
           <p className="mt-1 text-xs text-pitch-700">active regulars</p>
-          <Link href="/roster" className="mt-3 inline-block text-sm font-medium text-pitch-600 hover:underline">
+          <Link
+            href="/roster"
+            className="mt-3 inline-block text-sm font-medium text-pitch-600 hover:underline"
+          >
             Manage roster →
           </Link>
         </Card>
 
         <Card className="p-6">
           <p className="text-xs uppercase tracking-wide text-pitch-700">Next match</p>
-          <p className="mt-2 text-sm text-pitch-700">Match creation coming in Plan 2.</p>
+          {nextMatch ? (
+            <>
+              <p className="mt-2 text-lg font-bold text-pitch-900">
+                {nextMatch.opponentName ? `vs ${nextMatch.opponentName}` : "Friendly match"}
+              </p>
+              <p className="mt-1 text-xs text-pitch-700">
+                {new Date(nextMatch.playedAt).toLocaleString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}{" "}
+                · {nextMatch.formation}
+              </p>
+              <Link
+                href={`/matches/${nextMatch.id}/lineup`}
+                className="mt-3 inline-block text-sm font-medium text-pitch-600 hover:underline"
+              >
+                Open lineup →
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-pitch-700">No planned matches.</p>
+              <Link
+                href="/matches/new"
+                className="mt-3 inline-block text-sm font-medium text-pitch-600 hover:underline"
+              >
+                + Create match
+              </Link>
+            </>
+          )}
         </Card>
       </div>
     </div>
