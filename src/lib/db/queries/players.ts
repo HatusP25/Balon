@@ -45,11 +45,12 @@ export async function archivePlayer(id: string): Promise<void> {
 }
 
 export async function listAllAssignable(): Promise<Player[]> {
-  // For Plan 2 simplicity: just active regulars.
-  // Guests created on the fly will appear since they have isRegular=false, isActive=true; we don't filter for that yet.
-  return listActiveRegulars();
-}
-
-export async function createGuest(nickname: string): Promise<Player> {
-  return createPlayer({ nickname, isRegular: false, isActive: true });
+  // All active players: regulars AND guests. The lineup picker needs guests
+  // to remain visible after they're created, otherwise their chip falls back
+  // to an empty placeholder.
+  return db
+    .select()
+    .from(players)
+    .where(eq(players.isActive, true))
+    .orderBy(desc(players.createdAt));
 }

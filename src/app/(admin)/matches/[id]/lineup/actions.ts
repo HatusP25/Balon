@@ -7,9 +7,12 @@ import {
   assignPlayerToSlot,
   updateSlotPosition,
   deleteSlot,
+  deleteAllSlotsForMatch,
+  insertSlots,
 } from "@/lib/db/queries/lineup-slots";
 import { bumpLineupVersion, updateMatch } from "@/lib/db/queries/matches";
 import { createPlayer } from "@/lib/db/queries/players";
+import { getFormation } from "@/lib/formations";
 
 const PositionSchema = z.object({
   x: z.number().min(0).max(100),
@@ -66,6 +69,17 @@ export async function updateFormationAction(
   formation: "3-3-2" | "3-2-3" | "4-3-1" | "2-3-3" | "custom",
 ): Promise<void> {
   await updateMatch(matchId, { formation });
+  // Re-seed slots from the new preset (Custom just clears).
+  // Existing player assignments are dropped — switching formation is destructive
+  // by design. The Custom path leaves a blank pitch the user fills via drag-drop.
+  await deleteAllSlotsForMatch(matchId);
+  const preset = getFormation(formation);
+  if (preset && preset.slots.length > 0) {
+    await insertSlots(
+      matchId,
+      preset.slots.map((s) => ({ x: s.x, y: s.y, role: s.role, playerId: null })),
+    );
+  }
   await bumpLineupVersion(matchId);
   revalidatePath(`/matches/${matchId}/lineup`);
 }
