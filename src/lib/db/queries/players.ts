@@ -43,3 +43,13 @@ export async function archivePlayer(id: string): Promise<void> {
     .set({ isActive: false, updatedAt: new Date() })
     .where(eq(players.id, id));
 }
+
+export async function listAllAssignable(): Promise<Player[]> {
+  // For Plan 2 simplicity: just active regulars.
+  // Guests created on the fly will appear since they have isRegular=false, isActive=true; we don't filter for that yet.
+  return listActiveRegulars();
+}
+
+export async function createGuest(nickname: string): Promise<Player> {
+  return createPlayer({ nickname, isRegular: false, isActive: true });
+}

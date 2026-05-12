@@ -9,6 +9,7 @@ import {
   deleteSlot,
 } from "@/lib/db/queries/lineup-slots";
 import { bumpLineupVersion, updateMatch } from "@/lib/db/queries/matches";
+import { createPlayer } from "@/lib/db/queries/players";
 
 const PositionSchema = z.object({
   x: z.number().min(0).max(100),
@@ -67,4 +68,11 @@ export async function updateFormationAction(
   await updateMatch(matchId, { formation });
   await bumpLineupVersion(matchId);
   revalidatePath(`/matches/${matchId}/lineup`);
+}
+
+export async function createGuestAction(nickname: string): Promise<{ id: string }> {
+  const cleaned = nickname.trim();
+  if (cleaned.length === 0) throw new Error("nickname required");
+  const guest = await createPlayer({ nickname: cleaned, isRegular: false, isActive: true });
+  return { id: guest.id };
 }
