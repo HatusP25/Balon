@@ -3,6 +3,7 @@ import { getMatchById } from "@/lib/db/queries/matches";
 import { listSlotsForMatch } from "@/lib/db/queries/lineup-slots";
 import { listAllAssignable } from "@/lib/db/queries/players";
 import { LineupBuilder } from "@/components/lineup/lineup-builder";
+import { DeleteMatchButton } from "@/components/matches/delete-match-button";
 import {
   moveSlotAction,
   assignPlayerAction,
@@ -11,6 +12,7 @@ import {
   updateFormationAction,
   createGuestAction,
 } from "./actions";
+import { deleteMatchAction } from "../../actions";
 
 export default async function LineupPage({
   params,
@@ -76,6 +78,9 @@ export default async function LineupPage({
         players={players}
         actions={actions}
       />
+      <div className="mt-6 border-t border-pitch-100 pt-4">
+        <DeleteMatchButton deleteAction={deleteMatchAction.bind(null, match.id)} />
+      </div>
     </div>
   );
 }
