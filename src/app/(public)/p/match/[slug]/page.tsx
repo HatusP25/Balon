@@ -3,6 +3,7 @@ import { getMatchBySlug } from "@/lib/db/queries/matches";
 import { listSlotsForMatch } from "@/lib/db/queries/lineup-slots";
 import { listAllAssignable } from "@/lib/db/queries/players";
 import { PublicPitch } from "@/components/public/public-pitch";
+import { PlayedMatchSummary } from "@/components/public/played-match-summary";
 
 // Public match pages are DB-backed; render on-demand, not at build time
 export const dynamic = "force-dynamic";
@@ -46,12 +47,12 @@ export default async function PublicMatchPage({
       <PublicPitch slots={slots} players={players} />
 
       {match.status === "played" && match.ourScore !== null && match.theirScore !== null && (
-        <div className="rounded-xl border border-pitch-100 bg-white p-4 text-center">
-          <p className="text-xs uppercase tracking-wide text-pitch-700">Final score</p>
-          <p className="mt-1 text-3xl font-bold text-pitch-900">
-            {match.ourScore} – {match.theirScore}
-          </p>
-        </div>
+        <PlayedMatchSummary
+          matchId={match.id}
+          ourScore={match.ourScore}
+          theirScore={match.theirScore}
+          players={players}
+        />
       )}
     </article>
   );
