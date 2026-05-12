@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { listActiveRegulars } from "@/lib/db/queries/players";
-import { getNextPlannedMatch } from "@/lib/db/queries/matches";
+import { getNextPlannedMatch, getPendingResultMatch } from "@/lib/db/queries/matches";
 import { Card } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const [players, nextMatch] = await Promise.all([
+  const [players, nextMatch, pendingResult] = await Promise.all([
     listActiveRegulars(),
     getNextPlannedMatch(),
+    getPendingResultMatch(),
   ]);
 
   return (
@@ -17,6 +18,25 @@ export default async function AdminDashboardPage() {
         <h2 className="text-2xl font-bold text-pitch-900">Today</h2>
         <p className="text-sm text-pitch-700">Welcome back.</p>
       </div>
+
+      {pendingResult && (
+        <Link
+          href={`/matches/${pendingResult.id}/result`}
+          className="block rounded-xl border border-amber-300 bg-amber-50 p-4 transition hover:border-amber-500"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+            Pending result
+          </p>
+          <p className="mt-1 text-sm font-semibold text-amber-900">
+            Enter result for {pendingResult.opponentName ? `vs ${pendingResult.opponentName}` : "the match"} on{" "}
+            {new Date(pendingResult.playedAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+          <p className="mt-1 text-xs text-amber-700">Click to log score and goalscorers →</p>
+        </Link>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="p-6">

@@ -1,4 +1,4 @@
-import { eq, desc, gte, and } from "drizzle-orm";
+import { eq, desc, gte, and, lt } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { matches, type Match, type NewMatch } from "@/lib/db/schema";
 
@@ -50,6 +50,17 @@ export async function getNextPlannedMatch(): Promise<Match | undefined> {
     .from(matches)
     .where(and(eq(matches.status, "planned"), gte(matches.playedAt, now)))
     .orderBy(matches.playedAt)
+    .limit(1);
+  return rows[0];
+}
+
+export async function getPendingResultMatch() {
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(matches)
+    .where(and(eq(matches.status, "planned"), lt(matches.playedAt, now)))
+    .orderBy(desc(matches.playedAt))
     .limit(1);
   return rows[0];
 }
