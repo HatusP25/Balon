@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -56,10 +56,19 @@ function DraggablePitchSlot({
   player: Player | null;
   onClick: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `slot:${slot.id}`,
     data: { type: "slot", slotId: slot.id },
   });
+
+  // Combine the centering translate (so the chip is centered on its anchor point)
+  // with dnd-kit's drag transform (so the chip follows the cursor in real time).
+  // Without combining, dnd-kit's transform gets clobbered and the chip stays put
+  // visually — only updates after server roundtrip → feels stuttery.
+  const dragTransform = transform
+    ? ` translate3d(${transform.x}px, ${transform.y}px, 0)`
+    : "";
+
   return (
     <div
       ref={setNodeRef}
@@ -68,9 +77,11 @@ function DraggablePitchSlot({
         position: "absolute",
         left: `${Number(slot.x)}%`,
         top: `${Number(slot.y)}%`,
-        transform: "translate(-50%, -50%)",
-        opacity: isDragging ? 0.4 : 1,
+        transform: `translate(-50%, -50%)${dragTransform}`,
+        opacity: isDragging ? 0.85 : 1,
         zIndex: isDragging ? 30 : 10,
+        touchAction: "none",
+        willChange: isDragging ? "transform" : "auto",
       }}
     >
       <button
@@ -88,13 +99,23 @@ function DraggablePitchSlot({
 
 export function LineupBuilder({ matchId, formation, slots, players, actions }: Props) {
   const [pickingSlotId, setPickingSlotId] = useState<string | null>(null);
+  // Optimistic local copy of slots: updated instantly on drag-end / assign,
+  // then re-synced from server props after revalidation completes.
+  const [localSlots, setLocalSlots] = useState<SlotRow[]>(slots);
+  const [, startTransition] = useTransition();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
-  const slotsById = new Map(slots.map((s) => [s.id, s]));
-  const playerById = new Map(players.map((p) => [p.id, p]));
-  const selectedIds = new Set(slots.filter((s) => s.playerId).map((s) => s.playerId!));
+  // Re-sync local state when the server returns fresh slot data (after revalidation,
+  // or when the formation changes wholesale).
+  useEffect(() => {
+    setLocalSlots(slots);
+  }, [slots]);
 
-  async function onDragEnd(e: DragEndEvent) {
+  const slotsById = new Map(localSlots.map((s) => [s.id, s]));
+  const playerById = new Map(players.map((p) => [p.id, p]));
+  const selectedIds = new Set(localSlots.filter((s) => s.playerId).map((s) => s.playerId!));
+
+  function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over) return;
     const overRect = over.rect;
@@ -111,7 +132,15 @@ export function LineupBuilder({ matchId, formation, slots, players, actions }: P
       const cy = rect.top + rect.height / 2 - overRect.top;
       const nx = Math.max(0, Math.min(100, (cx / overRect.width) * 100));
       const ny = Math.max(0, Math.min(100, (cy / overRect.height) * 100));
-      await actions.move(slotId, nx, ny);
+
+      // Optimistic: lock the new position into local state immediately.
+      // Same render tick that dnd-kit clears its transform → no visible snap-back.
+      setLocalSlots((prev) =>
+        prev.map((s) => (s.id === slotId ? { ...s, x: String(nx), y: String(ny) } : s)),
+      );
+      startTransition(() => {
+        void actions.move(slotId, nx, ny);
+      });
       return;
     }
 
@@ -126,7 +155,17 @@ export function LineupBuilder({ matchId, formation, slots, players, actions }: P
       const ny = Math.max(0, Math.min(100, (cy / overRect.height) * 100));
       const role: "FW" | "MF" | "DF" | "GK" =
         ny < 33 ? "FW" : ny < 66 ? "MF" : ny < 88 ? "DF" : "GK";
-      await actions.addSlot(nx, ny, role, playerId);
+
+      // Optimistic: add a temp slot. Real id arrives on revalidation and useEffect
+      // syncs localSlots back to the server-truthful set.
+      const tempId = `temp-${Date.now()}`;
+      setLocalSlots((prev) => [
+        ...prev,
+        { id: tempId, matchId, playerId, x: String(nx), y: String(ny), role },
+      ]);
+      startTransition(() => {
+        void actions.addSlot(nx, ny, role, playerId);
+      });
       return;
     }
   }
@@ -140,7 +179,7 @@ export function LineupBuilder({ matchId, formation, slots, players, actions }: P
           <div>
             <DroppablePitch>
               <Pitch>
-                {slots.map((slot) => (
+                {localSlots.map((slot) => (
                   <DraggablePitchSlot
                     key={slot.id}
                     slot={slot}
@@ -166,8 +205,15 @@ export function LineupBuilder({ matchId, formation, slots, players, actions }: P
               !selectedIds.has(p.id) ||
               slotsById.get(pickingSlotId ?? "")?.playerId === p.id,
           )}
-          onPick={async (playerId) => {
-            if (pickingSlotId) await actions.assign(pickingSlotId, playerId);
+          onPick={(playerId) => {
+            if (!pickingSlotId) return;
+            // Optimistic: update assignment locally first.
+            setLocalSlots((prev) =>
+              prev.map((s) => (s.id === pickingSlotId ? { ...s, playerId } : s)),
+            );
+            startTransition(() => {
+              void actions.assign(pickingSlotId, playerId);
+            });
           }}
           onCreateGuest={actions.createGuest}
         />
