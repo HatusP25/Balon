@@ -5,6 +5,7 @@ import { listSlotsForMatch } from "@/lib/db/queries/lineup-slots";
 import { listAllAssignable } from "@/lib/db/queries/players";
 import { LineupBuilder } from "@/components/lineup/lineup-builder";
 import { DeleteMatchButton } from "@/components/matches/delete-match-button";
+import { DownloadImageButton } from "@/components/public/download-image-button";
 import {
   moveSlotAction,
   assignPlayerAction,
@@ -71,6 +72,10 @@ export default async function LineupPage({
           >
             {match.status === "played" ? "Update result" : "Enter result"}
           </Link>
+          <DownloadImageButton
+            slug={match.shortSlug}
+            filename={`balon-${match.shortSlug}.png`}
+          />
           <a
             href={publicUrl}
             target="_blank"

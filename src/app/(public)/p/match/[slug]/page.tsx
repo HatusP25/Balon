@@ -4,6 +4,7 @@ import { listSlotsForMatch } from "@/lib/db/queries/lineup-slots";
 import { listAllAssignable } from "@/lib/db/queries/players";
 import { PublicPitch } from "@/components/public/public-pitch";
 import { PlayedMatchSummary } from "@/components/public/played-match-summary";
+import { DownloadImageButton } from "@/components/public/download-image-button";
 
 // Public match pages are DB-backed; render on-demand, not at build time
 export const dynamic = "force-dynamic";
@@ -43,6 +44,13 @@ export default async function PublicMatchPage({
           {fmtDate} · Formation {match.formation}
         </p>
       </header>
+
+      <div className="flex justify-center">
+        <DownloadImageButton
+          slug={match.shortSlug}
+          filename={`balon-${match.shortSlug}.png`}
+        />
+      </div>
 
       <PublicPitch slots={slots} players={players} />
 
