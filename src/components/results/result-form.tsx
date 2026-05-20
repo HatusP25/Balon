@@ -45,7 +45,7 @@ export function ResultForm({
 
   return (
     <form action={dispatch} className="space-y-4">
-      <ScoreSection ourInitial={our} theirInitial={their} onChange={(u, t) => { setOur(u); setTheir(t); }} />
+      <ScoreSection our={our} their={their} onChange={(u, t) => { setOur(u); setTheir(t); }} />
 
       <AttendanceSection
         players={allPlayers}

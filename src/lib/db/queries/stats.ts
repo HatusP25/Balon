@@ -16,7 +16,8 @@ export interface LeaderboardRow {
 }
 
 export async function listLeaderboard(): Promise<LeaderboardRow[]> {
-  const rows = await db
+  // Base aggregate: matches + scoring + W/L/D, joined via appearances.
+  const base = await db
     .select({
       playerId: players.id,
       nickname: players.nickname,
@@ -24,7 +25,6 @@ export async function listLeaderboard(): Promise<LeaderboardRow[]> {
       avatarPath: players.avatarPath,
       matchesPlayed: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' THEN ${matchAppearances.matchId} END)::int`,
       goalsScored: sql<number>`COUNT(DISTINCT ${goals.id})::int`,
-      assists: sql<number>`COALESCE(SUM(CASE WHEN ${goals.assistId} = ${players.id} THEN 1 ELSE 0 END), 0)::int`,
       wins: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' AND ${matches.ourScore} > ${matches.theirScore} THEN ${matches.id} END)::int`,
       losses: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' AND ${matches.ourScore} < ${matches.theirScore} THEN ${matches.id} END)::int`,
       draws: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' AND ${matches.ourScore} = ${matches.theirScore} THEN ${matches.id} END)::int`,
@@ -36,7 +36,24 @@ export async function listLeaderboard(): Promise<LeaderboardRow[]> {
     .where(eq(players.isActive, true))
     .groupBy(players.id, players.nickname, players.jerseyNumber, players.avatarPath);
 
-  return rows;
+  // Independent aggregate: assists per player (across played matches only).
+  const assistRows = await db
+    .select({
+      playerId: players.id,
+      assists: sql<number>`COUNT(${goals.id})::int`,
+    })
+    .from(players)
+    .leftJoin(goals, eq(goals.assistId, players.id))
+    .leftJoin(matches, and(eq(matches.id, goals.matchId), eq(matches.status, "played")))
+    .where(eq(players.isActive, true))
+    .groupBy(players.id);
+
+  const assistsByPlayer = new Map(assistRows.map((r) => [r.playerId, r.assists]));
+
+  return base.map((r) => ({
+    ...r,
+    assists: assistsByPlayer.get(r.playerId) ?? 0,
+  }));
 }
 
 export interface PlayerProfile {
@@ -71,11 +88,10 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
   const playerRow = await db.select().from(players).where(eq(players.id, playerId)).limit(1);
   if (playerRow.length === 0) return null;
 
-  const aggregates = await db
+  const baseRows = await db
     .select({
       matchesPlayed: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' THEN ${matchAppearances.matchId} END)::int`,
       goalsScored: sql<number>`COUNT(DISTINCT ${goals.id})::int`,
-      assists: sql<number>`COALESCE(SUM(CASE WHEN ${goals.assistId} = ${playerId} THEN 1 ELSE 0 END), 0)::int`,
       wins: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' AND ${matches.ourScore} > ${matches.theirScore} THEN ${matches.id} END)::int`,
       losses: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' AND ${matches.ourScore} < ${matches.theirScore} THEN ${matches.id} END)::int`,
       draws: sql<number>`COUNT(DISTINCT CASE WHEN ${matches.status} = 'played' AND ${matches.ourScore} = ${matches.theirScore} THEN ${matches.id} END)::int`,
@@ -85,14 +101,25 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
     .leftJoin(goals, and(eq(goals.matchId, matches.id), eq(goals.scorerId, playerId)))
     .where(eq(matchAppearances.playerId, playerId));
 
-  const stats = aggregates[0] ?? {
+  const base = baseRows[0] ?? {
     matchesPlayed: 0,
     goalsScored: 0,
-    assists: 0,
     wins: 0,
     losses: 0,
     draws: 0,
   };
+
+  const assistRows = await db
+    .select({
+      assists: sql<number>`COUNT(${goals.id})::int`,
+    })
+    .from(goals)
+    .innerJoin(matches, and(eq(matches.id, goals.matchId), eq(matches.status, "played")))
+    .where(eq(goals.assistId, playerId));
+
+  const assists = assistRows[0]?.assists ?? 0;
+
+  const stats = { ...base, assists };
 
   const recent = await db
     .select({
